@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme:light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme:dark)">
+<title>岗位匹配 · 床旁之外</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.back{display:inline-flex;align-items:center;font-size:17px;color:var(--tint);margin:6px 0 4px;font-weight:500}
+.back:active{opacity:.6}
+textarea{width:100%;min-height:130px;border-radius:14px;border:1.5px solid var(--sep);
+  background:var(--bg-elev);color:var(--label);font-family:inherit;font-size:14px;
+  line-height:1.6;padding:12px;box-sizing:border-box;resize:vertical;-webkit-appearance:none}
+.minibtn{width:100%;height:46px;border-radius:12px;border:1.5px solid rgba(11,110,95,.3);
+  background:transparent;color:var(--tint);font-size:15px;font-weight:600;font-family:inherit;
+  margin-top:10px;transition:transform .2s cubic-bezier(.32,.72,0,1)}
+.minibtn:active{transform:scale(.97);opacity:.7}
+.minibtn.solid{background:var(--tint);color:#fff;border-color:transparent}
+@media (prefers-color-scheme:dark){.minibtn.solid{color:#00120F}}
+.bigpct{text-align:center;padding:14px 0 4px}
+.bigpct b{font-size:60px;font-weight:700;letter-spacing:-3px;line-height:1;
+  font-variant-numeric:tabular-nums;color:var(--tint)}
+.bigpct span{font-size:18px;color:var(--tint);font-weight:600}
+.pctnote{text-align:center;font-size:13px;color:var(--label2);margin:4px 0 0}
+.pick{display:flex;align-items:flex-start;gap:9px;padding:10px 11px;border-radius:10px;
+  background:rgba(120,120,128,.07);margin-bottom:7px;font-size:14px;line-height:1.4;
+  transition:all .2s cubic-bezier(.32,.72,0,1);border:1.5px solid transparent}
+.pick:active{transform:scale(.985)}
+.pick.on{background:var(--tint-soft);border-color:var(--tint)}
+.tick{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--label3);flex:none;
+  margin-top:1px;display:grid;place-items:center;transition:all .2s}
+.pick.on .tick{background:var(--tint);border-color:var(--tint)}
+.tick svg{width:10px;height:10px;opacity:0;transition:opacity .15s}
+.pick.on .tick svg{opacity:1}
+</style>
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">‹ 返回</a>
+  <h1 class="large">岗位匹配</h1>
+  <p class="sub">把医院招聘公告粘进来，我帮你拆成一张「你符不符合」的清单。</p>
+
+  <textarea id="jd" placeholder="把招聘公告全文粘到这里，包括「任职要求」「岗位条件」那些段落"></textarea>
+  <button class="minibtn solid" id="parse">拆解这份公告</button>
+
+  <div id="out"></div>
+
+  <p class="footnote" style="margin-top:24px">
+    这是关键词匹配，不是录用预测。公告里的软性要求（性格、面貌、关系）它看不见。<br>
+    全部在本地计算，公告内容不会上传。
+  </p>
+</main>
+
+<script>
+var BANK = {
+  '学历': ['全日制本科', '全日制大专', '统招', '本科及以上', '硕士', '大专及以上', '专科及以上'],
+  '证书': ['护士执业证', '执业资格', '护士资格', '护师', '主管护师', '副主任护师', '专科护士', 'BLS', 'ACLS', '规培'],
+  '经验': ['一年以上', '两年以上', '三年以上', '五年以上', '三甲', '二甲', '工作经验', '应届'],
+  '技能': ['静脉穿刺', '静脉输液', '导尿', '吸痰', '心电监护', '除颤', '抢救', '心肺复苏',
+           '三查七对', '护理文书', '危重', '伤口', '造口', '血液透析', '呼吸机', 'PICC', '鼻饲'],
+  '科室': ['急诊', 'ICU', '手术室', '儿科', '产科', '新生儿', '肿瘤', '血液透析', '门诊', '病房'],
+  '其他': ['身高', '年龄', '户籍', '夜班', '轮转', '英语', '计算机', '服从安排']
+};
+
+document.getElementById('parse').addEventListener('click', function () {
+  var text = document.getElementById('jd').value.trim();
+  var out = document.getElementById('out');
+  if (text.length < 20) {
+    out.innerHTML = '<p class="footnote" style="color:#C8503C">公告太短了，多粘一点。</p>';
+    return;
+  }
+
+  var hits = [];
+  Object.keys(BANK).forEach(function (cat) {
+    BANK[cat].forEach(function (kw) {
+      if (text.indexOf(kw) > -1 && hits.indexOf(kw) < 0) hits.push(kw);
+    });
+  });
+
+  if (!hits.length) {
+    out.innerHTML = '<p class="footnote">没识别出护理招聘的关键词。可能这份公告写法比较特殊，或者你粘的是职位简介而不是要求部分。</p>';
+    return;
+  }
+
+  var html = '<p class="res-h" style="font-size:13px;color:var(--label2);margin:20px 4px 8px">' +
+    '这份公告里有 ' + hits.length + ' 个硬条件，你符合几个？点一下打勾</p>';
+  html += '<div id="picks">';
+  hits.forEach(function (kw, i) {
+    html += '<div class="pick" data-i="' + i + '">' +
+      '<span class="tick"><svg viewBox="0 0 12 12" fill="none" stroke="#fff" stroke-width="2.4" ' +
+      'stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.3l2.6 2.6L10 3.4"/></svg></span>' +
+      '<span>' + kw + '</span></div>';
+  });
+  html += '</div>';
+  html += '<div id="score" style="margin-top:20px"></div>';
+  out.innerHTML = html;
+
+  var picked = {};
+  var total = hits.length;
+
+  function paintScore() {
+    var n = Object.keys(picked).length;
+    var pct = Math.round(n / total * 100);
+    var msg;
+    if (pct >= 85) msg = '条件基本都对得上，可以投';
+    else if (pct >= 60) msg = '能投，但缺的几条要提前想好怎么答';
+    else if (pct >= 40) msg = '差距明显，先补最缺的那一条';
+    else msg = '硬条件差太多，建议换一家';
+
+    document.getElementById('score').innerHTML =
+      '<div class="bigpct"><b>' + pct + '</b><span>%</span></div>' +
+      '<p class="pctnote">' + n + ' / ' + total + ' 条符合 · ' + msg + '</p>';
+  }
+  paintScore();
+
+  document.getElementById('picks').addEventListener('click', function (e) {
+    var p = e.target.closest('.pick');
+    if (!p) return;
+    var i = p.dataset.i;
+    if (picked[i]) { delete picked[i]; p.classList.remove('on'); }
+    else { picked[i] = 1; p.classList.add('on'); }
+    paintScore();
+  });
+});
+</script>
+</body>
+</html>
