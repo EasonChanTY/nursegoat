@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme:light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme:dark)">
+<title>AI 看图分析 · 床旁之外</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.back{display:inline-flex;align-items:center;font-size:17px;color:var(--tint);margin:6px 0 4px;font-weight:500}
+.back:active{opacity:.6}
+.box{background:var(--bg-elev);border-radius:16px;padding:16px;margin-bottom:12px}
+.box h4{margin:0 0 6px;font-size:15px;font-weight:600}
+.box p{margin:0 0 10px;font-size:13px;color:var(--label2);line-height:1.6}
+.warn{background:rgba(255,149,0,.11);border-radius:12px;padding:12px;font-size:13px;
+  color:var(--label2);line-height:1.6;margin-bottom:14px}
+.warn b{color:#B36B00}
+input[type=text]{width:100%;height:44px;border-radius:11px;border:1.5px solid var(--sep);
+  background:var(--bg);color:var(--label);font-family:inherit;font-size:14px;padding:0 12px;
+  box-sizing:border-box;-webkit-appearance:none}
+.minibtn{width:100%;height:46px;border-radius:12px;border:1.5px solid rgba(11,110,95,.3);
+  background:transparent;color:var(--tint);font-size:15px;font-weight:600;font-family:inherit;
+  margin-top:10px;transition:transform .2s cubic-bezier(.32,.72,0,1)}
+.minibtn:active{transform:scale(.97);opacity:.7}
+.minibtn.solid{background:var(--tint);color:#fff;border-color:transparent}
+@media (prefers-color-scheme:dark){.minibtn.solid{color:#00120F}}
+.minibtn[disabled]{opacity:.35}
+.preview{margin:14px 0;border-radius:14px;overflow:hidden;border:1px solid var(--sep)}
+.preview img{width:100%;display:block}
+.state{text-align:center;padding:26px 0;font-size:14px;color:var(--label2)}
+.spin{width:26px;height:26px;border-radius:50%;border:2.5px solid rgba(120,120,128,.2);
+  border-top-color:var(--tint);margin:0 auto 12px;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.res-h{font-size:13px;color:var(--label2);margin:20px 4px 8px}
+.bigscore{text-align:center;padding:10px 0 4px}
+.bigscore b{font-size:58px;font-weight:700;letter-spacing:-2.5px;line-height:1;
+  font-variant-numeric:tabular-nums;color:var(--tint)}
+.bigscore span{font-size:15px;color:var(--label3)}
+.lv{text-align:center;font-size:14px;color:var(--label2);margin:4px 0 0}
+.dim{padding:11px 0;position:relative}
+.dim + .dim::before{content:"";position:absolute;top:0;left:0;right:0;height:.5px;background:var(--sep)}
+.dim-top{display:flex;justify-content:space-between;font-size:14px;font-weight:600}
+.dim-top i{font-style:normal;color:var(--tint);font-variant-numeric:tabular-nums}
+.dim p{margin:2px 0 0;font-size:12.5px;color:var(--label2);line-height:1.55}
+.issue{display:flex;gap:10px;padding:12px;background:var(--bg-elev);border-radius:12px;margin-bottom:8px}
+.dot2{width:8px;height:8px;border-radius:50%;margin-top:6px;flex:none}
+.dot2.r{background:#FF3B30}.dot2.y{background:#FF9500}.dot2.g{background:#34C759}
+.issue h5{margin:0 0 2px;font-size:14px;font-weight:600}
+.issue p{margin:0;font-size:13px;color:var(--label2);line-height:1.5}
+.rw{background:var(--bg-elev);border-radius:12px;padding:13px;margin-bottom:9px;font-size:13px;line-height:1.6}
+.rw .b{color:#C8503C;text-decoration:line-through;opacity:.8}
+.rw .a{color:var(--tint);font-weight:500;margin-top:6px;display:block}
+.rw .tag{font-size:11px;color:var(--label3);letter-spacing:.5px}
+</style>
+</head>
+<body>
+
+<main>
+  <a class="back" href="index.html">‹ 返回</a>
+  <h1 class="large">AI 看图分析</h1>
+  <p class="sub">上传简历截图，AI 按 8 个维度挑问题，并给你能直接抄的改写。</p>
+
+  <div class="warn">
+    <b>注意：这一步会把图片发给 Google 的 AI 模型。</b><br>
+    也就是说，简历上的姓名、电话、学校会离开你的手机。介意的话，先用笔把个人信息涂掉再拍。不用这个功能时，其他页面仍然完全本地运行。
+  </div>
+
+  <div id="setup" class="box" style="display:none">
+    <h4>第一次用，先填一个地址</h4>
+    <p>填你刚才部署的 Cloudflare Worker 地址，只需要填一次。</p>
+    <input type="text" id="wurl" placeholder="https://xxxx.workers.dev" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <button class="minibtn solid" id="savew">保存</button>
+  </div>
+
+  <div id="app" style="display:none">
+    <input type="file" accept="image/*" id="file" style="display:none">
+    <button class="btn btn-fill" id="pick">选择简历截图</button>
+    <div id="prev"></div>
+    <button class="minibtn" id="run" disabled>开始分析</button>
+    <div id="out"></div>
+  </div>
+
+  <p class="footnote" style="margin-top:22px">
+    AI 会看错、也会过度严格。它的意见当参考，不要当判决书。<br>
+    换地址想改？把浏览器数据清掉，重新填一次。
+  </p>
+</main>
+
+<script>
+var WKEY = 'cwyc_worker';
+var workerUrl = localStorage.getItem(WKEY) || '';
+var pickedFile = null;
+var pickedB64 = '';
+
+var setup = document.getElementById('setup');
+var app = document.getElementById('app');
+var out = document.getElementById('out');
+var runBtn = document.getElementById('run');
+var prev = document.getElementById('prev');
+
+function refresh() {
+  if (workerUrl) { setup.style.display = 'none'; app.style.display = 'block'; }
+  else { setup.style.display = 'block'; app.style.display = 'none'; }
+}
+refresh();
+
+document.getElementById('savew').addEventListener('click', function () {
+  var v = document.getElementById('wurl').value.trim();
+  if (!v) return;
+  if (v.charAt(v.length - 1) === '/') v = v.slice(0, -1);
+  workerUrl = v;
+  try { localStorage.setItem(WKEY, v); } catch (e) {}
+  refresh();
+});
+
+document.getElementById('pick').addEventListener('click', function () {
+  document.getElementById('file').click();
+});
+
+document.getElementById('file').addEventListener('change', function (e) {
+  var f = e.target.files && e.target.files[0];
+  if (!f) return;
+  pickedFile = f;
+  prev.innerHTML = '<div class="preview"><img id="pvimg" alt="预览"></div>';
+  var img = document.getElementById('pvimg');
+  img.src = URL.createObjectURL(f);
+  runBtn.disabled = false;
+  runBtn.textContent = '开始分析';
+  out.innerHTML = '';
+});
+
+function compress(file) {
+  return new Promise(function (resolve, reject) {
+    var img = new Image();
+    var url = URL.createObjectURL(file);
+    img.onload = function () {
+      var w = img.naturalWidth, h = img.naturalHeight;
+      var max = 1600;
+      var k = Math.min(1, max / Math.max(w, h));
+      w = Math.round(w * k); h = Math.round(h * k);
+      var c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      var x = c.getContext('2d');
+      x.fillStyle = '#fff'; x.fillRect(0, 0, w, h);
+      x.drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg', 0.82).split(',')[1]);
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('图片读不出来，换一张试试')); };
+    img.src = url;
+  });
+}
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+runBtn.addEventListener('click', function () {
+  if (!pickedFile) return;
+  runBtn.disabled = true;
+  out.innerHTML = '<div class="state"><div class="spin"></div>正在拆解你的简历…<br>大约 10–20 秒</div>';
+
+  compress(pickedFile).then(function (b64) {
+    pickedB64 = b64;
+    return fetch(workerUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: b64, mime: 'image/jpeg' })
+    });
+  }).then(function (r) {
+    return r.json();
+  }).then(function (d) {
+    if (d.error) throw new Error(d.error);
+    if (!d.result) throw new Error('没有拿到结果');
+    paint(d.result);
+  }).catch(function (err) {
+    out.innerHTML = '<div class="state">出错了：' + esc(err.message) +
+      '<br><br>常见原因：地址填错、密钥名字不是 GEMINI_KEY、或者今天的免费额度用完了。</div>';
+    runBtn.disabled = false;
+  });
+});
+
+function paint(r) {
+  var total = Number(r.total) || 0;
+  var html = '';
+
+  if (!total) {
+    out.innerHTML = '<div class="state">' + esc(r.summary || '这张图看起来不像简历，换一张清晰的截图试试。') + '</div>';
+    runBtn.disabled = false;
+    return;
+  }
+
+  html += '<div class="bigscore"><b>' + total + '</b><span>/100</span></div>';
+  html += '<p class="lv">' + esc(r.level || '') + '</p>';
+  if (r.summary) html += '<p class="lv" style="margin-top:8px">' + esc(r.summary) + '</p>';
+
+  if (r.dims && r.dims.length) {
+    html += '<p class="res-h">逐项得分</p><div class="group" style="padding:2px 14px">';
+    r.dims.forEach(function (d) {
+      html += '<div class="dim"><div class="dim-top"><span>' + esc(d.name) +
+        '</span><i>' + esc(d.score) + '/' + esc(d.max) + '</i></div>' +
+        '<p>' + esc(d.why) + '</p></div>';
+    });
+    html += '</div>';
+  }
+
+  if (r.issues && r.issues.length) {
+    html += '<p class="res-h">问题清单</p>';
+    r.issues.forEach(function (i) {
+      var c = i.level === 'red' ? 'r' : (i.level === 'yellow' ? 'y' : 'g');
+      html += '<div class="issue"><span class="dot2 ' + c + '"></span><div>' +
+        '<h5>' + esc(i.title) + '</h5><p>' + esc(i.fix) + '</p></div></div>';
+    });
+  }
+
+  if (r.rewrites && r.rewrites.length) {
+    html += '<p class="res-h">照着改</p>';
+    r.rewrites.forEach(function (w) {
+      html += '<div class="rw"><span class="tag">现在</span><br><span class="b">' +
+        esc(w.before) + '</span><span class="a">改成：' + esc(w.after) + '</span></div>';
+    });
+  }
+
+  html += '<button class="minibtn" id="again">换一张再分析</button>';
+  out.innerHTML = html;
+  runBtn.disabled = false;
+
+  document.getElementById('again').addEventListener('click', function () {
+    out.innerHTML = '';
+    prev.innerHTML = '';
+    pickedFile = null;
+    runBtn.disabled = true;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+</script>
+</body>
+</html>
