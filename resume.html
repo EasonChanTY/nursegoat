@@ -10,7 +10,11 @@
 <style>
 .back{display:inline-flex;align-items:center;font-size:17px;color:var(--tint);margin:6px 0 4px;font-weight:500}
 .back:active{opacity:.6}
-.progress{height:3px;background:rgba(120,120,128,.18);border-radius:2px;overflow:hidden;margin:12px 0 18px}
+.seg{display:flex;gap:2px;background:rgba(120,120,128,.12);border-radius:9px;padding:2px;margin:14px 0 14px}
+.seg button{flex:1;border:0;background:none;font-family:inherit;font-size:13px;padding:7px 4px;
+  border-radius:7px;color:var(--label);font-weight:500;transition:all .2s cubic-bezier(.32,.72,0,1)}
+.seg button.on{background:var(--bg-elev);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.14)}
+.progress{height:3px;background:rgba(120,120,128,.18);border-radius:2px;overflow:hidden;margin:0 0 16px}
 .progress i{display:block;height:100%;width:0;background:var(--tint);border-radius:2px;
   transition:width .4s cubic-bezier(.32,.72,0,1)}
 .qcard{background:var(--bg-elev);border-radius:16px;padding:16px;margin-bottom:12px}
@@ -44,15 +48,18 @@
 .sheet.show{transform:none}
 .sheet-inner{max-width:560px;margin:0 auto;
   padding:calc(18px + env(safe-area-inset-top)) 16px calc(44px + env(safe-area-inset-bottom))}
-.sheet-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sheet-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .sheet-top h5{margin:0;font-size:17px;font-weight:600}
 .linkbtn{background:none;border:0;color:var(--tint);font-size:15px;font-family:inherit;padding:6px}
 .linkbtn:active{opacity:.5}
-.bigscore{text-align:center;padding:6px 0 4px}
+.bigscore{text-align:center;padding:4px 0 2px}
 .bigscore b{font-size:64px;font-weight:700;letter-spacing:-3px;line-height:1;
   font-variant-numeric:tabular-nums;color:var(--tint)}
 .bigscore span{font-size:16px;color:var(--label3)}
 .lv{text-align:center;font-size:14px;color:var(--label2);margin:6px 0 0}
+.delta{text-align:center;font-size:13px;margin:10px 0 0;font-weight:600}
+.delta.up{color:#248A3D}.delta.down{color:#C8503C}.delta.flat{color:var(--label2)}
+@media (prefers-color-scheme:dark){.delta.up{color:#4CD964}.delta.down{color:#FF6B5E}}
 .radarwrap{background:var(--bg-elev);border-radius:16px;padding:10px 6px 4px;margin:16px 0}
 .radar{width:100%;height:auto;color:var(--label)}
 .radar .gl{fill:none;stroke:currentColor;stroke-opacity:.13;stroke-width:1}
@@ -64,9 +71,17 @@
 .dot2.r{background:#FF3B30}.dot2.y{background:#FF9500}.dot2.g{background:#34C759}
 .issue h4{margin:0 0 3px;font-size:14px;font-weight:600}
 .issue p{margin:0;font-size:13px;color:var(--label2);line-height:1.5}
+.hist{display:flex;align-items:center;justify-content:space-between;padding:11px 0;
+  font-size:14px;position:relative}
+.hist + .hist::before{content:"";position:absolute;top:0;left:0;right:0;height:.5px;background:var(--sep)}
+.hist b{font-variant-numeric:tabular-nums;color:var(--tint);font-weight:600}
 .cardwrap{margin-top:16px}
 .cardwrap img{width:100%;display:block;border-radius:16px}
 .tipnote{font-size:12px;color:var(--label2);text-align:center;margin:10px 0 0}
+.minibtn{width:100%;height:46px;border-radius:12px;border:1.5px solid rgba(11,110,95,.28);
+  background:transparent;color:var(--tint);font-size:15px;font-weight:600;font-family:inherit;
+  margin-top:10px;transition:transform .2s cubic-bezier(.32,.72,0,1)}
+.minibtn:active{transform:scale(.97);opacity:.7}
 </style>
 </head>
 <body>
@@ -74,11 +89,17 @@
 <main class="padbottom">
   <a class="back" href="index.html">‹ 返回</a>
   <h1 class="large">简历体检</h1>
-  <p class="sub">8 个问题，60 秒。简历不上传，分数只在你手机上算。</p>
+  <p class="sub">先选你的身份，题库不一样。简历不上传，分数只在你手机上。</p>
+
+  <div class="seg" id="seg">
+    <button data-m="fresh" class="on">应届 / 实习期</button>
+    <button data-m="exp">在职护士</button>
+  </div>
+
   <div class="progress"><i id="bar"></i></div>
   <div id="list"></div>
   <p class="footnote">
-    想贴整份简历做全文分析？<b>粘贴版马上上线</b>。先用这个 60 秒勾选版，它覆盖了最常见的 8 个失分点。
+    应届生请放心：**没有注册执业证是正常的**，写上「已通过护士执业资格考试」就够了，这一项不会扣你多少分。
   </p>
 </main>
 
@@ -89,54 +110,56 @@
 <div class="sheet" id="sheet"><div class="sheet-inner" id="sheetInner"></div></div>
 
 <script>
-const QUIZ = [
-  { id:'q1', dim:'硬门槛', type:'single', max:12,
-    q:'你的护士执业资格，现在是什么状态？', hint:'这是护理简历最硬的一行',
+var SKILLS = [
+  {t:'静脉穿刺 / 静脉输液', s:2},
+  {t:'导尿 / 留置尿管护理', s:2},
+  {t:'吸痰 / 气道管理', s:2},
+  {t:'心电监护 / 除颤', s:2},
+  {t:'抢救配合 / 心肺复苏', s:2},
+  {t:'护理文书 / 三查七对', s:2},
+  {t:'危重患者护理', s:2},
+  {t:'伤口 / 造口护理', s:2}
+];
+
+var QUIZ_FRESH = [
+  { id:'f1', dim:'实习质量', type:'multi', max:22,
+    q:'实习经历，写到了哪些？', hint:'这是应届生最该加重的一块',
     opts:[
-      {t:'已注册，能写清有效期', s:12},
-      {t:'已通过考试，等待注册', s:10},
-      {t:'应届，还没考', s:6},
-      {t:'没有 / 不确定', s:1}
+      {t:'实习满 8 个月以上', s:5},
+      {t:'轮转过 3 个以上科室', s:5},
+      {t:'每个科室都写了具体做了什么', s:4},
+      {t:'有带教老师评语或「优秀实习生」', s:4},
+      {t:'写了独立完成的操作例数', s:4}
     ]},
-  { id:'q2', dim:'临床经历', type:'multi', max:20,
-    q:'简历里的临床经历，写到了哪些？', hint:'可多选',
+  { id:'f2', dim:'执业进度', type:'single', max:12,
+    q:'护士执业资格考试，你现在到哪一步了？', hint:'应届写「已通过」完全合规，不需要注册',
     opts:[
-      {t:'实习经历，且写了具体科室', s:5},
-      {t:'实习里写了操作例数', s:4},
-      {t:'有正式工作或规培经历', s:5},
-      {t:'写过独立值班或夜班经历', s:3},
-      {t:'写明了医院等级或床位数', s:3}
+      {t:'已通过，成绩合格', s:12},
+      {t:'已报名，正在备考', s:8},
+      {t:'还没开始准备', s:3},
+      {t:'不打算考', s:0}
     ]},
-  { id:'q3', dim:'护理技能', type:'multi', max:15,
+  { id:'f3', dim:'护理技能', type:'multi', max:15,
     q:'明确写进简历的操作有哪些？', hint:'可多选，每项 2 分',
+    opts: SKILLS },
+  { id:'f4', dim:'在校表现', type:'multi', max:16,
+    q:'在校期间有哪些拿得出手的？', hint:'可多选',
     opts:[
-      {t:'静脉穿刺 / 静脉输液', s:2},
-      {t:'导尿 / 留置尿管护理', s:2},
-      {t:'吸痰 / 气道管理', s:2},
-      {t:'心电监护 / 除颤', s:2},
-      {t:'抢救配合 / 心肺复苏', s:2},
-      {t:'护理文书 / 三查七对', s:2},
-      {t:'危重患者护理', s:2},
-      {t:'伤口 / 造口护理', s:2}
+      {t:'专业排名前 30%', s:5},
+      {t:'拿过奖学金', s:4},
+      {t:'护理技能竞赛获奖', s:3},
+      {t:'学生干部 / 社团负责人', s:2},
+      {t:'有志愿服务时长记录', s:2}
     ]},
-  { id:'q4', dim:'证书资质', type:'multi', max:15,
-    q:'手上有哪些证书或职称？', hint:'可多选',
+  { id:'f5', dim:'量化成果', type:'multi', max:12,
+    q:'简历里有没有具体数字？', hint:'可多选',
     opts:[
-      {t:'护士执业证（写明注册有效期）', s:6},
-      {t:'BLS / ACLS 等急救证书', s:4},
-      {t:'专科护士证（ICU / 急诊 / 伤口等）', s:4},
-      {t:'护师 / 主管护师职称', s:3},
-      {t:'普通话 / 计算机等级', s:2}
+      {t:'操作例数（如穿刺 300 例）', s:4},
+      {t:'参与护理过的患者数或床位数', s:3},
+      {t:'带教或帮扶学弟学妹的人数', s:2},
+      {t:'满意度、表彰或评价数据', s:3}
     ]},
-  { id:'q5', dim:'量化成果', type:'multi', max:15,
-    q:'简历里有具体数字吗？', hint:'可多选',
-    opts:[
-      {t:'操作例数（如穿刺 300 例）', s:5},
-      {t:'护理人次 / 分管床位数', s:4},
-      {t:'带教人数', s:3},
-      {t:'满意度 / 质控 / 不良事件率', s:3}
-    ]},
-  { id:'q6', dim:'目标匹配', type:'single', max:10,
+  { id:'f6', dim:'目标匹配', type:'single', max:10,
     q:'这份简历，是照着目标医院改的吗？',
     opts:[
       {t:'对着招聘公告逐条改过', s:10},
@@ -144,7 +167,7 @@ const QUIZ = [
       {t:'一份简历投所有医院', s:3},
       {t:'还没看过招聘公告', s:0}
     ]},
-  { id:'q7', dim:'排版规范', type:'multi', max:8,
+  { id:'f7', dim:'排版规范', type:'multi', max:8,
     q:'排版细节做到了哪些？', hint:'可多选',
     opts:[
       {t:'一页以内', s:3},
@@ -153,51 +176,137 @@ const QUIZ = [
       {t:'文件名规范（姓名-学校-专业）', s:1},
       {t:'有正装照片', s:0.5}
     ]},
-  { id:'q8', dim:'加分项', type:'multi', max:5,
-    q:'有没有这些加分的东西？', hint:'可多选',
+  { id:'f8', dim:'加分项', type:'multi', max:5,
+    q:'还有这些加分的东西吗？', hint:'可多选',
     opts:[
       {t:'论文或科研经历', s:2},
-      {t:'品管圈 QCC / 护理改善项目', s:1.5},
-      {t:'技能竞赛获奖', s:1},
+      {t:'品管圈 QCC / 创新项目', s:1.5},
       {t:'英语四六级 / 雅思', s:1},
-      {t:'志愿服务或援派经历', s:0.5}
+      {t:'计算机或其他证书', s:0.5}
     ]}
 ];
 
-const SHORT = {'硬门槛':'硬门槛','临床经历':'临床','护理技能':'技能','证书资质':'证书',
-  '量化成果':'量化','目标匹配':'匹配','排版规范':'排版','加分项':'加分'};
+var QUIZ_EXP = [
+  { id:'e1', dim:'执业资质', type:'single', max:15,
+    q:'你的护士执业证，现在什么状态？',
+    opts:[
+      {t:'已注册，且在有效期内', s:15},
+      {t:'已注册，但半年内到期', s:10},
+      {t:'中断注册 / 待重新注册', s:4},
+      {t:'没有注册', s:0}
+    ]},
+  { id:'e2', dim:'工作经历', type:'multi', max:22,
+    q:'工作经历写了哪些？', hint:'可多选',
+    opts:[
+      {t:'二甲或以上医院，正式工作满 2 年', s:6},
+      {t:'有明确专科方向（ICU / 急诊 / 手术室等）', s:6},
+      {t:'有独立值班或带组经验', s:5},
+      {t:'有轮转或进修经历', s:3},
+      {t:'写明了分管床位数', s:2}
+    ]},
+  { id:'e3', dim:'护理技能', type:'multi', max:15,
+    q:'明确写进简历的操作有哪些？', hint:'可多选，每项 2 分',
+    opts: SKILLS },
+  { id:'e4', dim:'证书资质', type:'multi', max:13,
+    q:'手上有哪些证书或职称？', hint:'可多选',
+    opts:[
+      {t:'护师职称', s:4},
+      {t:'主管护师及以上', s:3},
+      {t:'BLS / ACLS 等急救证书', s:2},
+      {t:'专科护士证', s:2},
+      {t:'继续教育学分齐全', s:2}
+    ]},
+  { id:'e5', dim:'量化成果', type:'multi', max:15,
+    q:'简历里有具体数字吗？', hint:'可多选',
+    opts:[
+      {t:'护理人次 / 分管床位数', s:5},
+      {t:'带教人数', s:4},
+      {t:'质控项目或不良事件改善', s:3},
+      {t:'满意度提升数据', s:3}
+    ]},
+  { id:'e6', dim:'目标匹配', type:'single', max:10,
+    q:'这份简历，是照着目标医院改的吗？',
+    opts:[
+      {t:'对着招聘公告逐条改过', s:10},
+      {t:'大致了解要求，改了一些', s:7},
+      {t:'一份简历投所有医院', s:3},
+      {t:'还没看过招聘公告', s:0}
+    ]},
+  { id:'e7', dim:'排版规范', type:'multi', max:5,
+    q:'这些细节做到了哪些？', hint:'可多选',
+    opts:[
+      {t:'一页以内', s:2},
+      {t:'用 PDF 格式投递', s:1.5},
+      {t:'文件名规范', s:1},
+      {t:'时间线连续，没有空档', s:0.5}
+    ]},
+  { id:'e8', dim:'加分项', type:'multi', max:5,
+    q:'还有这些加分的吗？', hint:'可多选',
+    opts:[
+      {t:'论文或科研', s:2},
+      {t:'品管圈 QCC / 护理改善项目', s:1.5},
+      {t:'专科竞赛获奖', s:1},
+      {t:'英语四六级 / 雅思', s:0.5}
+    ]}
+];
 
-const ADVICE = {
-  '硬门槛':{low:'先把执业资格状态写清楚，这是筛简历第一关。',mid:'补上注册有效期，比写「已取得」有用得多。'},
-  '临床经历':{low:'实习要写清科室、医院等级、具体做了什么。',mid:'再加一句独立值班或夜班经历。'},
-  '护理技能':{low:'别写「熟练掌握各项操作」，列 6–8 项具体操作。',mid:'再补 2–3 项专科操作，如吸痰、心电监护。'},
-  '证书资质':{low:'BLS、专科护士证是拉开差距的地方。',mid:'把证书的取得时间和有效期写全。'},
-  '量化成果':{low:'简历里一个数字都没有，这是最致命的一处。',mid:'再加带教人数或满意度数据。'},
+var SHORT = {'实习质量':'实习','执业进度':'执业','护理技能':'技能','在校表现':'在校',
+  '量化成果':'量化','目标匹配':'匹配','排版规范':'排版','加分项':'加分',
+  '执业资质':'资质','工作经历':'经历','证书资质':'证书'};
+
+var ADVICE = {
+  '实习质量':{low:'实习别只写「在某院实习 8 个月」，要写科室 + 做了什么 + 多少例。',mid:'再补一句带教老师评语或优秀实习生。'},
+  '执业进度':{low:'先确认考试进度，这是应届生唯一能补的硬门槛。',mid:'写清「已通过，成绩合格」，比空着强。'},
+  '护理技能':{low:'别写「熟练掌握各项操作」，列 6–8 项具体操作。',mid:'再补 2–3 项专科操作。'},
+  '在校表现':{low:'排名、奖学金、竞赛，至少写一条，应届生没工作经历就靠这个。',mid:'把获奖写成「校级二等奖」这种具体级别。'},
+  '量化成果':{low:'整份简历一个数字都没有，这是最致命的一处。',mid:'再加一个带教或表彰数据。'},
   '目标匹配':{low:'先看目标医院的招聘公告，按关键词改简历。',mid:'对着公告逐条对照，命中率会明显提升。'},
-  '排版规范':{low:'控制在一页，用 PDF，文件名写成姓名-学校-专业。',mid:'补一个正装照片和规范的文件名。'},
-  '加分项':{low:'有机会可以参与品管圈或竞赛，这是差异化。',mid:'把已有成果写成一条可量化的成绩。'}
+  '排版规范':{low:'控制在一页，用 PDF，文件名写成姓名-学校-专业。',mid:'补一个正装照片和规范文件名。'},
+  '加分项':{low:'有机会参与品管圈或竞赛，这是差异化。',mid:'把已有成果写成一条可量化的成绩。'},
+  '执业资质':{low:'注册状态是硬门槛，先确认清楚再投。',mid:'写清注册有效期至某年某月。'},
+  '工作经历':{low:'工作经历要写清医院等级、科室、年限、分管床位。',mid:'补一句专科方向或进修经历。'},
+  '证书资质':{low:'职称和专科证是拉开差距的地方。',mid:'把取得时间和有效期写全。'}
 };
 
-const answers = {};
-const list = document.getElementById('list');
+var ans = { fresh: {}, exp: {} };
+var mode = 'fresh';
+var QUIZ = QUIZ_FRESH;
+var list = document.getElementById('list');
 
-QUIZ.forEach(function (q, qi) {
-  var el = document.createElement('div');
-  el.className = 'qcard';
-  el.innerHTML =
-    '<div class="qhead"><span class="qnum">' + String(qi + 1).padStart(2, '0') +
-    '</span><span class="qtxt">' + q.q + '</span></div>' +
-    (q.hint ? '<p class="qhint">' + q.hint + '</p>' : '') +
-    '<div class="opts">' +
-    q.opts.map(function (o, i) {
-      return '<div class="opt' + (q.type === 'multi' ? ' multi' : '') +
-        '" data-q="' + q.id + '" data-i="' + i + '" data-t="' + q.type + '">' +
-        '<span class="mark"><svg viewBox="0 0 12 12" fill="none" stroke="#fff" stroke-width="2.4" ' +
-        'stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.3l2.6 2.6L10 3.4"/></svg></span>' +
-        '<span>' + o.t + '</span></div>';
-    }).join('') +
-    '</div>';
-  list.appendChild(el);
+function renderQuiz() {
+  list.innerHTML = '';
+  QUIZ.forEach(function (q, qi) {
+    var el = document.createElement('div');
+    el.className = 'qcard';
+    el.innerHTML =
+      '<div class="qhead"><span class="qnum">' + String(qi + 1).padStart(2, '0') +
+      '</span><span class="qtxt">' + q.q + '</span></div>' +
+      (q.hint ? '<p class="qhint">' + q.hint + '</p>' : '') +
+      '<div class="opts">' +
+      q.opts.map(function (o, i) {
+        var on = '';
+        var a = ans[mode][q.id];
+        if (q.type === 'single' && a === i) on = ' on';
+        if (q.type === 'multi' && a && a.indexOf(i) > -1) on = ' on';
+        return '<div class="opt' + (q.type === 'multi' ? ' multi' : '') + on +
+          '" data-q="' + q.id + '" data-i="' + i + '" data-t="' + q.type + '">' +
+          '<span class="mark"><svg viewBox="0 0 12 12" fill="none" stroke="#fff" stroke-width="2.4" ' +
+          'stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.3l2.6 2.6L10 3.4"/></svg></span>' +
+          '<span>' + o.t + '</span></div>';
+      }).join('') + '</div>';
+    list.appendChild(el);
+  });
+}
+
+document.getElementById('seg').addEventListener('click', function (e) {
+  var b = e.target.closest('button');
+  if (!b) return;
+  mode = b.dataset.m;
+  QUIZ = mode === 'fresh' ? QUIZ_FRESH : QUIZ_EXP;
+  this.querySelectorAll('button').forEach(function (x) { x.classList.remove('on'); });
+  b.classList.add('on');
+  renderQuiz();
+  update();
 });
 
 list.addEventListener('click', function (e) {
@@ -205,22 +314,23 @@ list.addEventListener('click', function (e) {
   if (!opt) return;
   var q = opt.dataset.q, i = Number(opt.dataset.i), t = opt.dataset.t;
   if (t === 'single') {
-    answers[q] = i;
+    ans[mode][q] = i;
     opt.parentElement.querySelectorAll('.opt').forEach(function (x) { x.classList.remove('on'); });
     opt.classList.add('on');
   } else {
-    if (!answers[q]) answers[q] = [];
-    var at = answers[q].indexOf(i);
-    if (at > -1) { answers[q].splice(at, 1); opt.classList.remove('on'); }
-    else { answers[q].push(i); opt.classList.add('on'); }
+    if (!ans[mode][q]) ans[mode][q] = [];
+    var at = ans[mode][q].indexOf(i);
+    if (at > -1) { ans[mode][q].splice(at, 1); opt.classList.remove('on'); }
+    else { ans[mode][q].push(i); opt.classList.add('on'); }
   }
   update();
 });
 
 function doneCount() {
+  var a = ans[mode];
   return QUIZ.filter(function (q) {
-    var a = answers[q.id];
-    return q.type === 'single' ? a !== undefined : (a && a.length > 0);
+    var v = a[q.id];
+    return q.type === 'single' ? v !== undefined : (v && v.length > 0);
   }).length;
 }
 
@@ -234,7 +344,7 @@ function update() {
 
 function calc() {
   return QUIZ.map(function (q) {
-    var a = answers[q.id], s = 0;
+    var a = ans[mode][q.id], s = 0;
     if (q.type === 'single') {
       if (a !== undefined) s = q.opts[a].s;
     } else if (a && a.length) {
@@ -249,6 +359,15 @@ function levelOf(t) {
   if (t >= 70) return { t: '良好', q: ['再补两个数字，', '就能进面试池。'] };
   if (t >= 55) return { t: '及格', q: ['内容有了，', '但还缺让人信的证据。'] };
   return { t: '待改进', q: ['简历还没准备好，', '先补这三处。'] };
+}
+
+function loadHist() {
+  try { return JSON.parse(localStorage.getItem('cwyc_hist') || '[]'); } catch (e) { return []; }
+}
+function saveHist(rec) {
+  var h = loadHist(); h.push(rec);
+  if (h.length > 20) h = h.slice(h.length - 20);
+  try { localStorage.setItem('cwyc_hist', JSON.stringify(h)); } catch (e) {}
 }
 
 function radarSVG(res) {
@@ -294,14 +413,11 @@ function buildCard(total, level, tags) {
   c.width = 900; c.height = 1200;
   var x = c.getContext('2d');
 
-  x.fillStyle = '#0B6E5F';
-  x.fillRect(0, 0, 900, 1200);
-
+  x.fillStyle = '#0B6E5F'; x.fillRect(0, 0, 900, 1200);
   var grd = x.createRadialGradient(780, 100, 20, 780, 100, 460);
   grd.addColorStop(0, 'rgba(255,255,255,.13)');
   grd.addColorStop(1, 'rgba(255,255,255,0)');
-  x.fillStyle = grd;
-  x.fillRect(0, 0, 900, 640);
+  x.fillStyle = grd; x.fillRect(0, 0, 900, 640);
 
   x.fillStyle = 'rgba(255,255,255,.62)';
   x.font = '26px -apple-system,"PingFang SC",sans-serif';
@@ -345,10 +461,34 @@ function buildCard(total, level, tags) {
   return c.toDataURL('image/png');
 }
 
+var AI_PROMPT = '你是三甲医院护理部负责简历初筛的老师。请严格按下面 8 个维度给我的护理简历打分，' +
+  '每一项给出得分、扣分理由，以及一句「改成这样」的具体范例（要能直接抄进简历）。\n' +
+  '1. 执业资格 / 实习质量\n2. 临床经历深度\n3. 护理技能（是否写了具体操作和例数）\n' +
+  '4. 证书与职称\n5. 量化成果（有没有数字）\n6. 与目标医院招聘公告的匹配度\n' +
+  '7. 排版与文件规范\n8. 加分项\n' +
+  '最后用三句话总结：这份简历最致命的三个问题是什么。\n我的简历如下：\n';
+
 document.getElementById('go').addEventListener('click', function () {
   var res = calc();
   var total = Math.round(res.reduce(function (a, r) { return a + r.s; }, 0));
   var lv = levelOf(total);
+
+  var prev = null;
+  var hist = loadHist();
+  for (var i = hist.length - 1; i >= 0; i--) {
+    if (hist[i].m === mode) { prev = hist[i].s; break; }
+  }
+  saveHist({ t: Date.now(), m: mode, s: total });
+
+  var deltaHtml = '';
+  if (prev === null) {
+    deltaHtml = '<p class="delta flat">这是你第一次体检</p>';
+  } else {
+    var d = total - prev;
+    if (d > 0) deltaHtml = '<p class="delta up">比上次高 ' + d + ' 分</p>';
+    else if (d < 0) deltaHtml = '<p class="delta down">比上次低 ' + Math.abs(d) + ' 分</p>';
+    else deltaHtml = '<p class="delta flat">和上次一样</p>';
+  }
 
   var issues = res.map(function (r) {
     var cls = r.pct >= 0.75 ? 'g' : (r.pct >= 0.5 ? 'y' : 'r');
@@ -363,27 +503,54 @@ document.getElementById('go').addEventListener('click', function () {
   var tags = [SHORT[sorted[0].dim] + '强', SHORT[sorted[1].dim] + '强',
               SHORT[sorted[sorted.length - 1].dim] + '偏弱'];
 
+  var histList = loadHist().filter(function (h) { return h.m === mode; })
+    .slice(-5).reverse().map(function (h) {
+      var dt = new Date(h.t);
+      return '<div class="hist"><span>' + (dt.getMonth() + 1) + ' 月 ' + dt.getDate() +
+        ' 日</span><b>' + h.s + ' 分</b></div>';
+    }).join('');
+
   var html =
     '<div class="sheet-top"><h5>体检结果</h5>' +
     '<button class="linkbtn" id="again">重新测</button></div>' +
     '<div class="bigscore"><b>' + total + '</b><span>/100</span></div>' +
-    '<p class="lv">' + lv.t + ' · ' + lv.q.join('') + '</p>' +
+    '<p class="lv">' + (mode === 'fresh' ? '应届 / 实习期' : '在职护士') + ' · ' + lv.t + '</p>' +
+    deltaHtml +
     '<div class="radarwrap">' + radarSVG(res) + '</div>' +
     '<p class="group-title" style="margin:0 4px 8px">逐项看</p>' + issues +
+    (histList ? '<p class="group-title" style="margin:16px 4px 8px">你的记录</p><div class="group" style="padding:0 14px">' + histList + '</div>' : '') +
     '<div class="cardwrap"><p class="group-title" style="margin:16px 4px 8px">分享卡</p>' +
     '<img id="cardImg" alt="体检报告卡">' +
-    '<p class="tipnote">长按图片保存，发到班级群或朋友圈</p></div>';
+    '<p class="tipnote">长按图片保存，发到班级群或朋友圈</p>' +
+    '<button class="minibtn" id="copyAI">复制 AI 深度分析指令</button>' +
+    '<p class="tipnote">粘到任意 AI（豆包、Kimi、GPT）里，后面接上你的简历全文</p></div>';
 
   document.getElementById('sheetInner').innerHTML = html;
   document.getElementById('cardImg').src = buildCard(total, lv, tags);
+
   document.getElementById('again').addEventListener('click', function () {
     location.reload();
+  });
+
+  document.getElementById('copyAI').addEventListener('click', function () {
+    var btn = this;
+    var done = function () { btn.textContent = '已复制，去粘到 AI 里'; };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(AI_PROMPT).then(done, done);
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = AI_PROMPT;
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(ta); done();
+    }
   });
 
   document.getElementById('sheet').classList.add('show');
   document.getElementById('sheet').scrollTop = 0;
 });
 
+renderQuiz();
 update();
 </script>
 </body>
