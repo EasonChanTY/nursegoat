@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme:light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme:dark)">
+<title>简历体检 · 床旁之外</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.back{display:inline-flex;align-items:center;font-size:17px;color:var(--tint);margin:6px 0 4px;font-weight:500}
+.back:active{opacity:.6}
+.progress{height:3px;background:rgba(120,120,128,.18);border-radius:2px;overflow:hidden;margin:12px 0 18px}
+.progress i{display:block;height:100%;width:0;background:var(--tint);border-radius:2px;
+  transition:width .4s cubic-bezier(.32,.72,0,1)}
+.qcard{background:var(--bg-elev);border-radius:16px;padding:16px;margin-bottom:12px}
+.qhead{display:flex;gap:9px;align-items:baseline;margin-bottom:10px}
+.qnum{font-size:12px;color:var(--tint);font-weight:700;font-variant-numeric:tabular-nums}
+.qtxt{font-size:16px;font-weight:600;line-height:1.45;letter-spacing:-.2px}
+.qhint{font-size:12px;color:var(--label2);margin:-4px 0 10px 27px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{display:flex;align-items:flex-start;gap:10px;padding:11px 12px;border-radius:11px;
+  background:rgba(120,120,128,.07);border:1.5px solid transparent;
+  font-size:14px;line-height:1.45;transition:all .22s cubic-bezier(.32,.72,0,1)}
+.opt:active{transform:scale(.985)}
+.opt.on{background:var(--tint-soft);border-color:var(--tint)}
+.mark{width:19px;height:19px;border-radius:50%;border:1.5px solid var(--label3);
+  flex:none;margin-top:1px;display:grid;place-items:center;transition:all .22s cubic-bezier(.32,.72,0,1)}
+.opt.multi .mark{border-radius:6px}
+.opt.on .mark{background:var(--tint);border-color:var(--tint)}
+.mark svg{width:11px;height:11px;opacity:0;transition:opacity .15s}
+.opt.on .mark svg{opacity:1}
+.bottombar{position:fixed;left:0;right:0;bottom:0;z-index:60;
+  padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+  background:rgba(242,242,247,.88);border-top:.5px solid var(--sep);
+  backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px)}
+@media (prefers-color-scheme:dark){.bottombar{background:rgba(0,0,0,.8)}}
+.bottombar .btn{width:100%;border:0;font-family:inherit}
+.bottombar .btn[disabled]{opacity:.38;box-shadow:none}
+.padbottom{padding-bottom:120px}
+.sheet{position:fixed;inset:0;z-index:100;background:var(--bg);overflow-y:auto;
+  -webkit-overflow-scrolling:touch;transform:translateY(100%);
+  transition:transform .46s cubic-bezier(.32,.72,0,1)}
+.sheet.show{transform:none}
+.sheet-inner{max-width:560px;margin:0 auto;
+  padding:calc(18px + env(safe-area-inset-top)) 16px calc(44px + env(safe-area-inset-bottom))}
+.sheet-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sheet-top h5{margin:0;font-size:17px;font-weight:600}
+.linkbtn{background:none;border:0;color:var(--tint);font-size:15px;font-family:inherit;padding:6px}
+.linkbtn:active{opacity:.5}
+.bigscore{text-align:center;padding:6px 0 4px}
+.bigscore b{font-size:64px;font-weight:700;letter-spacing:-3px;line-height:1;
+  font-variant-numeric:tabular-nums;color:var(--tint)}
+.bigscore span{font-size:16px;color:var(--label3)}
+.lv{text-align:center;font-size:14px;color:var(--label2);margin:6px 0 0}
+.radarwrap{background:var(--bg-elev);border-radius:16px;padding:10px 6px 4px;margin:16px 0}
+.radar{width:100%;height:auto;color:var(--label)}
+.radar .gl{fill:none;stroke:currentColor;stroke-opacity:.13;stroke-width:1}
+.radar .ax{stroke:currentColor;stroke-opacity:.16;stroke-width:1}
+.radar .area{fill:var(--tint);fill-opacity:.22;stroke:var(--tint);stroke-width:2;stroke-linejoin:round}
+.radar text{fill:currentColor;fill-opacity:.55;font-size:9px;font-family:inherit}
+.issue{display:flex;gap:10px;padding:13px;background:var(--bg-elev);border-radius:13px;margin-bottom:8px}
+.dot2{width:8px;height:8px;border-radius:50%;margin-top:7px;flex:none}
+.dot2.r{background:#FF3B30}.dot2.y{background:#FF9500}.dot2.g{background:#34C759}
+.issue h4{margin:0 0 3px;font-size:14px;font-weight:600}
+.issue p{margin:0;font-size:13px;color:var(--label2);line-height:1.5}
+.cardwrap{margin-top:16px}
+.cardwrap img{width:100%;display:block;border-radius:16px}
+.tipnote{font-size:12px;color:var(--label2);text-align:center;margin:10px 0 0}
+</style>
+</head>
+<body>
+
+<main class="padbottom">
+  <a class="back" href="index.html">‹ 返回</a>
+  <h1 class="large">简历体检</h1>
+  <p class="sub">8 个问题，60 秒。简历不上传，分数只在你手机上算。</p>
+  <div class="progress"><i id="bar"></i></div>
+  <div id="list"></div>
+  <p class="footnote">
+    想贴整份简历做全文分析？<b>粘贴版马上上线</b>。先用这个 60 秒勾选版，它覆盖了最常见的 8 个失分点。
+  </p>
+</main>
+
+<div class="bottombar">
+  <button class="btn btn-fill" id="go" disabled>查看结果 · 已完成 0/8</button>
+</div>
+
+<div class="sheet" id="sheet"><div class="sheet-inner" id="sheetInner"></div></div>
+
+<script>
+const QUIZ = [
+  { id:'q1', dim:'硬门槛', type:'single', max:12,
+    q:'你的护士执业资格，现在是什么状态？', hint:'这是护理简历最硬的一行',
+    opts:[
+      {t:'已注册，能写清有效期', s:12},
+      {t:'已通过考试，等待注册', s:10},
+      {t:'应届，还没考', s:6},
+      {t:'没有 / 不确定', s:1}
+    ]},
+  { id:'q2', dim:'临床经历', type:'multi', max:20,
+    q:'简历里的临床经历，写到了哪些？', hint:'可多选',
+    opts:[
+      {t:'实习经历，且写了具体科室', s:5},
+      {t:'实习里写了操作例数', s:4},
+      {t:'有正式工作或规培经历', s:5},
+      {t:'写过独立值班或夜班经历', s:3},
+      {t:'写明了医院等级或床位数', s:3}
+    ]},
+  { id:'q3', dim:'护理技能', type:'multi', max:15,
+    q:'明确写进简历的操作有哪些？', hint:'可多选，每项 2 分',
+    opts:[
+      {t:'静脉穿刺 / 静脉输液', s:2},
+      {t:'导尿 / 留置尿管护理', s:2},
+      {t:'吸痰 / 气道管理', s:2},
+      {t:'心电监护 / 除颤', s:2},
+      {t:'抢救配合 / 心肺复苏', s:2},
+      {t:'护理文书 / 三查七对', s:2},
+      {t:'危重患者护理', s:2},
+      {t:'伤口 / 造口护理', s:2}
+    ]},
+  { id:'q4', dim:'证书资质', type:'multi', max:15,
+    q:'手上有哪些证书或职称？', hint:'可多选',
+    opts:[
+      {t:'护士执业证（写明注册有效期）', s:6},
+      {t:'BLS / ACLS 等急救证书', s:4},
+      {t:'专科护士证（ICU / 急诊 / 伤口等）', s:4},
+      {t:'护师 / 主管护师职称', s:3},
+      {t:'普通话 / 计算机等级', s:2}
+    ]},
+  { id:'q5', dim:'量化成果', type:'multi', max:15,
+    q:'简历里有具体数字吗？', hint:'可多选',
+    opts:[
+      {t:'操作例数（如穿刺 300 例）', s:5},
+      {t:'护理人次 / 分管床位数', s:4},
+      {t:'带教人数', s:3},
+      {t:'满意度 / 质控 / 不良事件率', s:3}
+    ]},
+  { id:'q6', dim:'目标匹配', type:'single', max:10,
+    q:'这份简历，是照着目标医院改的吗？',
+    opts:[
+      {t:'对着招聘公告逐条改过', s:10},
+      {t:'大致了解要求，改了一些', s:7},
+      {t:'一份简历投所有医院', s:3},
+      {t:'还没看过招聘公告', s:0}
+    ]},
+  { id:'q7', dim:'排版规范', type:'multi', max:8,
+    q:'排版细节做到了哪些？', hint:'可多选',
+    opts:[
+      {t:'一页以内', s:3},
+      {t:'手机号和邮箱都写了', s:2},
+      {t:'用 PDF 格式投递', s:1.5},
+      {t:'文件名规范（姓名-学校-专业）', s:1},
+      {t:'有正装照片', s:0.5}
+    ]},
+  { id:'q8', dim:'加分项', type:'multi', max:5,
+    q:'有没有这些加分的东西？', hint:'可多选',
+    opts:[
+      {t:'论文或科研经历', s:2},
+      {t:'品管圈 QCC / 护理改善项目', s:1.5},
+      {t:'技能竞赛获奖', s:1},
+      {t:'英语四六级 / 雅思', s:1},
+      {t:'志愿服务或援派经历', s:0.5}
+    ]}
+];
+
+const SHORT = {'硬门槛':'硬门槛','临床经历':'临床','护理技能':'技能','证书资质':'证书',
+  '量化成果':'量化','目标匹配':'匹配','排版规范':'排版','加分项':'加分'};
+
+const ADVICE = {
+  '硬门槛':{low:'先把执业资格状态写清楚，这是筛简历第一关。',mid:'补上注册有效期，比写「已取得」有用得多。'},
+  '临床经历':{low:'实习要写清科室、医院等级、具体做了什么。',mid:'再加一句独立值班或夜班经历。'},
+  '护理技能':{low:'别写「熟练掌握各项操作」，列 6–8 项具体操作。',mid:'再补 2–3 项专科操作，如吸痰、心电监护。'},
+  '证书资质':{low:'BLS、专科护士证是拉开差距的地方。',mid:'把证书的取得时间和有效期写全。'},
+  '量化成果':{low:'简历里一个数字都没有，这是最致命的一处。',mid:'再加带教人数或满意度数据。'},
+  '目标匹配':{low:'先看目标医院的招聘公告，按关键词改简历。',mid:'对着公告逐条对照，命中率会明显提升。'},
+  '排版规范':{low:'控制在一页，用 PDF，文件名写成姓名-学校-专业。',mid:'补一个正装照片和规范的文件名。'},
+  '加分项':{low:'有机会可以参与品管圈或竞赛，这是差异化。',mid:'把已有成果写成一条可量化的成绩。'}
+};
+
+const answers = {};
+const list = document.getElementById('list');
+
+QUIZ.forEach(function (q, qi) {
+  var el = document.createElement('div');
+  el.className = 'qcard';
+  el.innerHTML =
+    '<div class="qhead"><span class="qnum">' + String(qi + 1).padStart(2, '0') +
+    '</span><span class="qtxt">' + q.q + '</span></div>' +
+    (q.hint ? '<p class="qhint">' + q.hint + '</p>' : '') +
+    '<div class="opts">' +
+    q.opts.map(function (o, i) {
+      return '<div class="opt' + (q.type === 'multi' ? ' multi' : '') +
+        '" data-q="' + q.id + '" data-i="' + i + '" data-t="' + q.type + '">' +
+        '<span class="mark"><svg viewBox="0 0 12 12" fill="none" stroke="#fff" stroke-width="2.4" ' +
+        'stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.3l2.6 2.6L10 3.4"/></svg></span>' +
+        '<span>' + o.t + '</span></div>';
+    }).join('') +
+    '</div>';
+  list.appendChild(el);
+});
+
+list.addEventListener('click', function (e) {
+  var opt = e.target.closest('.opt');
+  if (!opt) return;
+  var q = opt.dataset.q, i = Number(opt.dataset.i), t = opt.dataset.t;
+  if (t === 'single') {
+    answers[q] = i;
+    opt.parentElement.querySelectorAll('.opt').forEach(function (x) { x.classList.remove('on'); });
+    opt.classList.add('on');
+  } else {
+    if (!answers[q]) answers[q] = [];
+    var at = answers[q].indexOf(i);
+    if (at > -1) { answers[q].splice(at, 1); opt.classList.remove('on'); }
+    else { answers[q].push(i); opt.classList.add('on'); }
+  }
+  update();
+});
+
+function doneCount() {
+  return QUIZ.filter(function (q) {
+    var a = answers[q.id];
+    return q.type === 'single' ? a !== undefined : (a && a.length > 0);
+  }).length;
+}
+
+function update() {
+  var d = doneCount();
+  document.getElementById('bar').style.width = (d / QUIZ.length * 100) + '%';
+  var go = document.getElementById('go');
+  go.textContent = '查看结果 · 已完成 ' + d + '/' + QUIZ.length;
+  go.disabled = d < QUIZ.length;
+}
+
+function calc() {
+  return QUIZ.map(function (q) {
+    var a = answers[q.id], s = 0;
+    if (q.type === 'single') {
+      if (a !== undefined) s = q.opts[a].s;
+    } else if (a && a.length) {
+      s = Math.min(a.reduce(function (x, i) { return x + q.opts[i].s; }, 0), q.max);
+    }
+    return { dim: q.dim, s: s, max: q.max, pct: s / q.max };
+  });
+}
+
+function levelOf(t) {
+  if (t >= 85) return { t: '优秀', q: ['这份简历，', '可以放心投了。'] };
+  if (t >= 70) return { t: '良好', q: ['再补两个数字，', '就能进面试池。'] };
+  if (t >= 55) return { t: '及格', q: ['内容有了，', '但还缺让人信的证据。'] };
+  return { t: '待改进', q: ['简历还没准备好，', '先补这三处。'] };
+}
+
+function radarSVG(res) {
+  var cx = 120, cy = 120, R = 72, n = res.length;
+  var ang = function (i) { return i * 2 * Math.PI / n - Math.PI / 2; };
+  var g = '', ax = '', lb = '';
+  [0.25, 0.5, 0.75, 1].forEach(function (k) {
+    var pts = res.map(function (_, i) {
+      return (cx + R * k * Math.cos(ang(i))).toFixed(1) + ',' + (cy + R * k * Math.sin(ang(i))).toFixed(1);
+    }).join(' ');
+    g += '<polygon class="gl" points="' + pts + '"/>';
+  });
+  res.forEach(function (_, i) {
+    ax += '<line class="ax" x1="' + cx + '" y1="' + cy + '" x2="' +
+      (cx + R * Math.cos(ang(i))).toFixed(1) + '" y2="' + (cy + R * Math.sin(ang(i))).toFixed(1) + '"/>';
+  });
+  var area = res.map(function (r, i) {
+    return (cx + R * r.pct * Math.cos(ang(i))).toFixed(1) + ',' +
+           (cy + R * r.pct * Math.sin(ang(i))).toFixed(1);
+  }).join(' ');
+  res.forEach(function (r, i) {
+    var x = cx + (R + 20) * Math.cos(ang(i));
+    var y = cy + (R + 20) * Math.sin(ang(i));
+    lb += '<text x="' + x.toFixed(1) + '" y="' + (y + 3).toFixed(1) + '" text-anchor="middle">' +
+          (SHORT[r.dim] || r.dim) + '</text>';
+  });
+  return '<svg class="radar" viewBox="0 0 240 240">' + g + ax +
+    '<polygon class="area" points="' + area + '"/>' + lb + '</svg>';
+}
+
+function roundRect(x, X, Y, W, H, R) {
+  x.beginPath();
+  x.moveTo(X + R, Y);
+  x.lineTo(X + W - R, Y); x.quadraticCurveTo(X + W, Y, X + W, Y + R);
+  x.lineTo(X + W, Y + H - R); x.quadraticCurveTo(X + W, Y + H, X + W - R, Y + H);
+  x.lineTo(X + R, Y + H); x.quadraticCurveTo(X, Y + H, X, Y + H - R);
+  x.lineTo(X, Y + R); x.quadraticCurveTo(X, Y, X + R, Y);
+  x.closePath();
+}
+
+function buildCard(total, level, tags) {
+  var c = document.createElement('canvas');
+  c.width = 900; c.height = 1200;
+  var x = c.getContext('2d');
+
+  x.fillStyle = '#0B6E5F';
+  x.fillRect(0, 0, 900, 1200);
+
+  var grd = x.createRadialGradient(780, 100, 20, 780, 100, 460);
+  grd.addColorStop(0, 'rgba(255,255,255,.13)');
+  grd.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = grd;
+  x.fillRect(0, 0, 900, 640);
+
+  x.fillStyle = 'rgba(255,255,255,.62)';
+  x.font = '26px -apple-system,"PingFang SC",sans-serif';
+  x.fillText('床旁之外 · 护理简历体检', 64, 100);
+
+  var num = String(total);
+  x.font = 'bold 220px Georgia,"Times New Roman",serif';
+  x.fillStyle = '#FFFFFF';
+  var w = x.measureText(num).width;
+  x.fillText(num, 64, 360);
+
+  x.font = '42px -apple-system,sans-serif';
+  x.fillStyle = 'rgba(255,255,255,.5)';
+  x.fillText('/100', 64 + w + 10, 360);
+
+  x.font = 'bold 40px -apple-system,"PingFang SC",sans-serif';
+  x.fillStyle = '#C9F0E4';
+  x.fillText(level.t, 64, 432);
+
+  x.font = 'bold 54px -apple-system,"PingFang SC",sans-serif';
+  x.fillStyle = '#FFFFFF';
+  level.q.forEach(function (line, i) { x.fillText(line, 64, 640 + i * 78); });
+
+  var tx = 64;
+  tags.slice(0, 3).forEach(function (t) {
+    x.font = '26px -apple-system,"PingFang SC",sans-serif';
+    var tw = x.measureText(t).width + 46;
+    x.fillStyle = 'rgba(255,255,255,.16)';
+    roundRect(x, tx, 950, tw, 58, 15); x.fill();
+    x.fillStyle = '#EAF7F2';
+    x.fillText(t, tx + 23, 989);
+    tx += tw + 14;
+  });
+
+  x.fillStyle = 'rgba(255,255,255,.45)';
+  x.font = '24px -apple-system,sans-serif';
+  x.fillText('easonchanty.github.io/nursegoat', 64, 1118);
+  x.textAlign = 'right';
+  x.fillText('60 秒自测 · 简历不上传', 836, 1118);
+
+  return c.toDataURL('image/png');
+}
+
+document.getElementById('go').addEventListener('click', function () {
+  var res = calc();
+  var total = Math.round(res.reduce(function (a, r) { return a + r.s; }, 0));
+  var lv = levelOf(total);
+
+  var issues = res.map(function (r) {
+    var cls = r.pct >= 0.75 ? 'g' : (r.pct >= 0.5 ? 'y' : 'r');
+    var ad = ADVICE[r.dim] || { low: '', mid: '' };
+    var txt = r.pct >= 0.75 ? '这块没问题，保持。' : (r.pct >= 0.5 ? ad.mid : ad.low);
+    return '<div class="issue"><span class="dot2 ' + cls + '"></span><div>' +
+      '<h4>' + r.dim + ' · ' + Math.round(r.pct * 100) + '%</h4>' +
+      '<p>' + txt + '</p></div></div>';
+  }).join('');
+
+  var sorted = res.slice().sort(function (a, b) { return b.pct - a.pct; });
+  var tags = [SHORT[sorted[0].dim] + '强', SHORT[sorted[1].dim] + '强',
+              SHORT[sorted[sorted.length - 1].dim] + '偏弱'];
+
+  var html =
+    '<div class="sheet-top"><h5>体检结果</h5>' +
+    '<button class="linkbtn" id="again">重新测</button></div>' +
+    '<div class="bigscore"><b>' + total + '</b><span>/100</span></div>' +
+    '<p class="lv">' + lv.t + ' · ' + lv.q.join('') + '</p>' +
+    '<div class="radarwrap">' + radarSVG(res) + '</div>' +
+    '<p class="group-title" style="margin:0 4px 8px">逐项看</p>' + issues +
+    '<div class="cardwrap"><p class="group-title" style="margin:16px 4px 8px">分享卡</p>' +
+    '<img id="cardImg" alt="体检报告卡">' +
+    '<p class="tipnote">长按图片保存，发到班级群或朋友圈</p></div>';
+
+  document.getElementById('sheetInner').innerHTML = html;
+  document.getElementById('cardImg').src = buildCard(total, lv, tags);
+  document.getElementById('again').addEventListener('click', function () {
+    location.reload();
+  });
+
+  document.getElementById('sheet').classList.add('show');
+  document.getElementById('sheet').scrollTop = 0;
+});
+
+update();
+</script>
+</body>
+</html>
